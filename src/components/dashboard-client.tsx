@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, Bot, CheckCircle, Shield, Timer, Zap } from 'lucide-react';
 
-type Status = 'safe' | 'timer_active' | 'alert_sent' | 'check_in_sent';
+type Status = 'safe' | 'timer_active' | 'alert_sent' | 'check_in_sent' | 'timer_expired';
 type Location = { lat: number, lon: number } | null;
 
 const MOCK_USER_PHONE = '+15550001111';
@@ -52,25 +52,16 @@ export function DashboardClient() {
     }
   };
 
-  const stopTimer = (reason: 'safe' | 'expired') => {
+  const stopTimer = useCallback(() => {
     setIsTimerActive(false);
     setStatus('safe');
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
-    if (reason === 'safe') {
-      toast({
-        title: "You've arrived safely!",
-        description: 'The Home-Safe timer has been stopped.',
-      });
-    } else if (reason === 'expired') {
-      setStatus('alert_sent');
-      toast({
-        title: 'Timer Expired: Alert Sent',
-        description: "You didn't check in. An alert has been sent to your guardians.",
-        variant: 'destructive',
-      });
-    }
-  };
+    toast({
+      title: "You've arrived safely!",
+      description: 'The Home-Safe timer has been stopped.',
+    });
+  }, [toast]);
 
   const triggerSilentAlert = () => {
     setStatus('alert_sent');
@@ -118,7 +109,15 @@ export function DashboardClient() {
     if (!isTimerActive) return;
 
     timerIntervalRef.current = setInterval(() => {
-      setTimerRemaining((prev) => prev - 1);
+      setTimerRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current!);
+          setIsTimerActive(false);
+          setStatus('timer_expired');
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => {
@@ -127,10 +126,16 @@ export function DashboardClient() {
   }, [isTimerActive]);
 
   useEffect(() => {
-    if (isTimerActive && timerRemaining <= 0) {
-      stopTimer('expired');
+    if (status === 'timer_expired') {
+        setStatus('alert_sent');
+        toast({
+            title: 'Timer Expired: Alert Sent',
+            description: "You didn't check in. An alert has been sent to your guardians.",
+            variant: 'destructive',
+        });
     }
-  }, [timerRemaining, isTimerActive]);
+  }, [status, toast]);
+
 
   useEffect(() => {
     const simulateLocation = () => {
@@ -175,6 +180,7 @@ export function DashboardClient() {
       case 'timer_active': return { text: 'Timer Active', icon: <Timer className="mr-2 text-primary" /> };
       case 'check_in_sent': return { text: 'Check-in Sent', icon: <Bot className="mr-2 text-accent" /> };
       case 'alert_sent': return { text: 'Emergency Alert Sent', icon: <AlertTriangle className="mr-2 text-destructive" /> };
+      case 'timer_expired': return { text: 'Timer Expired', icon: <AlertTriangle className="mr-2 text-destructive" /> };
       default: return { text: 'Standby', icon: <Shield className="mr-2"/>};
     }
   }
@@ -206,15 +212,16 @@ export function DashboardClient() {
                       onChange={(e) => setTimerDuration(parseInt(e.target.value, 10))}
                       min="1"
                       className="mt-1"
+                      disabled={isTimerActive || status === 'alert_sent'}
                     />
                   </div>
-                  <Button onClick={startTimer} size="lg">Start Timer</Button>
+                  <Button onClick={startTimer} size="lg" disabled={isTimerActive || status === 'alert_sent'}>Start Timer</Button>
                 </div>
               )}
             </CardContent>
             {isTimerActive && (
               <CardFooter>
-                <Button onClick={() => stopTimer('safe')} className="w-full" size="lg" variant="secondary">
+                <Button onClick={() => stopTimer()} className="w-full" size="lg" variant="secondary">
                   <CheckCircle className="mr-2" /> I'm Safe
                 </Button>
               </CardFooter>
