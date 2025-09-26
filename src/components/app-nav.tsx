@@ -21,16 +21,16 @@ export function AppNav() {
     <>
       {navItems.map((item) => (
         <SidebarMenuItem key={item.href}>
-          <Link href={item.href} passHref>
+          <Link href={item.href} passHref legacyBehavior>
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith(item.href)}
               tooltip={item.label}
             >
-              <>
+              <a>
                 <item.icon />
                 <span>{item.label}</span>
-              </>
+              </a>
             </SidebarMenuButton>
           </Link>
         </SidebarMenuItem>
