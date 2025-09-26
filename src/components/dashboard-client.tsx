@@ -115,21 +115,22 @@ export function DashboardClient() {
   }, [location, lastLocation, stoppedTime, toast, status]);
 
   useEffect(() => {
-    if (isTimerActive) {
-      timerIntervalRef.current = setInterval(() => {
-        setTimerRemaining((prev) => {
-          if (prev <= 1) {
-            stopTimer('expired');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    if (!isTimerActive) return;
+
+    timerIntervalRef.current = setInterval(() => {
+      setTimerRemaining((prev) => prev - 1);
+    }, 1000);
+
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
   }, [isTimerActive]);
+
+  useEffect(() => {
+    if (isTimerActive && timerRemaining <= 0) {
+      stopTimer('expired');
+    }
+  }, [timerRemaining, isTimerActive]);
 
   useEffect(() => {
     const simulateLocation = () => {
